@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="1903dee6-4ef9-4115-b145-c4b80e00ed11" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="53873a75-ebbf-4bb8-87d1-e2471eb289f8" >
+		<file:connection workingDir="M:\poc03" />
+	</file:config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="f4d7cae0-b17f-4b40-b1c9-ab54a79455d2" />
+	<file:config name="File_Config1" doc:name="File Config" doc:id="9724b90b-a803-47dc-b40d-93e21e519999" >
+		<file:connection workingDir="M:\poc03" />
+	</file:config>
+	<flow name="poc03listandrenameFlow" doc:id="fbfbe3c8-84ec-4296-aab6-cc6d66bad707" >
+		<http:listener doc:name="Listener" doc:id="2be35375-8f33-4892-92bf-0dab76df5403" config-ref="HTTP_Listener_config" path="/listallandrename"/>
+		<file:list doc:id="103a89a6-44bb-4ea4-bd95-14efea18b24f" config-ref="File_Config" directoryPath="csvs" doc:name="list-csv-files">
+			<file:matcher filenamePattern="*.csv" />
+		</file:list>
+		<foreach doc:name="For Each" doc:id="c45c1bb8-17c1-41db-b5b8-40b0f99718b0" >
+			<os:retrieve doc:id="c67875f3-c27c-4bdb-800e-9246c6de10a4" key="namenum" target="nn" objectStore="Object_store" targetValue="#[payload as Number]" doc:name="retrieve-obj-store-key">
+				<os:default-value ><![CDATA[1]]></os:default-value>
+			</os:retrieve>
+			<file:rename doc:name="rename-csv-file" doc:id="c02b829e-cbe9-44c2-bdde-864ea7b3b77a" config-ref="File_Config1" path="#[attributes.path]" to="#['rename' ++ vars.nn ++ '.csv']"/>
+			<os:store doc:name="update-obj-store-key" doc:id="6736bcf5-d8bb-47a0-8567-62cf1f3bf183" key="namenum" objectStore="Object_store">
+				<os:value ><![CDATA[#[vars.nn + 1 as Number]]]></os:value>
+			</os:store>
+		</foreach>
+		<ee:transform doc:name="output-file-names" doc:id="0f2b9b24-d480-47a0-99e9-05f93694b1a4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload.attributes.fileName]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="flow-end" doc:id="548cd760-d69e-4dae-845a-4a0603e814c8" message="flow-end"/>
+	</flow>
+</mule>
